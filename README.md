@@ -20,9 +20,14 @@ done right in the app.
 
 This repository hosts the **releases** and the **issue tracker**. The source code is not public.
 
-> **Status:** preview. The macOS version is coming to [Releases](https://github.com/altiros/crowsnest/releases) soon;
-> the iPad version will follow via TestFlight / the App Store. Watch this repository (*Watch → Custom → Releases*)
-> to get notified.
+## Download
+
+**macOS (preview):** [download the latest release](https://github.com/altiros/crowsnest/releases) –
+unzip, move `Crowsnest.app` to Applications and open it. The app is signed with a Developer ID and notarized by Apple.
+
+**iPad:** coming via TestFlight / the App Store.
+
+Watch this repository (*Watch → Custom → Releases*) to get notified about new versions.
 
 ## Features
 
