@@ -20,6 +20,10 @@ done right in the app.
 
 This repository hosts the **releases** and the **issue tracker**. The source code is not public.
 
+<p align="center">
+  <img src="docs/overview.png" alt="Crowsnest: cluster overview with usage history" width="840">
+</p>
+
 ## Download
 
 **macOS (preview):** [download the latest release](https://github.com/altiros/crowsnest/releases) –
@@ -45,6 +49,14 @@ Watch this repository (*Watch → Custom → Releases*) to get notified about ne
 - **Actions** – scale, rollout restart, cordon/uncordon, trigger a CronJob, delete
 - **Multiple clusters** – every context of your kubeconfig
 - **Authentication** – client certificates, tokens and, on the Mac, exec plugins (`aws`, `gke-gcloud-auth-plugin`, `kubelogin`, …)
+
+### Pod shell
+
+<p align="center"><img src="docs/shell.gif" alt="Shell in a pod" width="760"></p>
+
+### Dark mode
+
+<p align="center"><img src="docs/pods-dark.png" alt="Pod list with metrics in dark mode" width="840"></p>
 
 ## Requirements
 
