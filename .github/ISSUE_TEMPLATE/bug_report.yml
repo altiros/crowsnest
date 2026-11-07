@@ -1,0 +1,71 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+
+        ⚠️ **This issue is public.** Do not paste kubeconfigs, tokens, certificates, secrets or other confidential
+        data (internal hostnames, IP addresses, customer names). Redact logs and YAML before posting.
+        Security problems: please use [private reporting](https://github.com/altiros/crowsnest/security/advisories/new) instead.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: "When I open the logs of a pod with init containers, …"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Select context …
+        2. Open …
+        3. …
+  - type: input
+    id: app-version
+    attributes:
+      label: Crowsnest version
+      description: Shown in "About Crowsnest" (Mac) or the settings (iPad).
+      placeholder: "0.1.0 (1)"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - iPadOS
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: macOS / iPadOS version
+      placeholder: "macOS 27.2"
+  - type: input
+    id: kubernetes
+    attributes:
+      label: Kubernetes version and distribution
+      description: e.g. output of `kubectl version` (server part) and where the cluster runs.
+      placeholder: "v1.34.3, EKS / GKE / AKS / k3s / microk8s / kind / Docker Desktop …"
+  - type: dropdown
+    id: auth
+    attributes:
+      label: Authentication
+      multiple: true
+      options:
+        - Client certificate
+        - Token
+        - Exec plugin (aws, gcloud, kubelogin, …)
+        - Other / not sure
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages or logs (redacted)
+      render: text
