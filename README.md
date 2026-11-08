@@ -18,7 +18,7 @@ Crowsnest is a native app for managing Kubernetes clusters, built with SwiftUI f
 See the health of your cluster at a glance, find any resource in a few clicks and get the everyday work
 done right in the app.
 
-This repository hosts the **releases** and the **issue tracker**. The source code is not public.
+Crowsnest is **open source** (Apache-2.0). Official signed builds are on the [releases page](https://github.com/altiros/crowsnest/releases); additional features are available in **Crowsnest Pro**.
 
 <p align="center">
   <img src="docs/overview.png" alt="Crowsnest: cluster overview with usage history" width="840">
@@ -79,6 +79,32 @@ Watch this repository (*Watch → Custom → Releases*) to get notified about ne
 
 > ⚠️ Issues are public. Never paste kubeconfigs, tokens, certificates, secrets or other confidential data
 > (internal hostnames, IP addresses, customer names) into an issue. Redact logs and YAML before posting.
+
+## Building from source
+
+Requirements: macOS 15+, a current Xcode (Swift 6).
+
+```sh
+git clone https://github.com/altiros/crowsnest && cd crowsnest
+make test        # unit tests
+make run         # run the macOS app (or: make app → build/Crowsnest.app)
+make ipad-run    # iPad app in the Simulator (needs xcodegen)
+```
+
+The repository is a single Swift package:
+
+| Module | |
+|---|---|
+| `CrowsnestKit` | Kubernetes client: kubeconfig and auth (certificates, tokens, exec plugins), REST API, server-side apply, exec and port-forward over WebSockets, Helm releases, metrics – no UI, also builds for iOS |
+| `CrowsnestUI` | SwiftUI interface shared by macOS and iPadOS, with extension points (`CrowsnestExtension`) |
+| `Crowsnest` | macOS app; `App/` contains the iPad app and the XcodeGen project |
+
+Contributions are welcome – see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Apache License 2.0 – see [LICENSE](LICENSE) and [NOTICE](NOTICE). The name and icon are trademarks of Altiros GmbH,
+see [TRADEMARKS.md](TRADEMARKS.md). Crowsnest Pro features are not part of this repository.
 
 ## About
 

@@ -1,0 +1,14 @@
+Crowsnest
+Copyright 2026 Altiros GmbH
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+The name "Crowsnest" and the Crowsnest logo/app icon are trademarks of Altiros GmbH
+and are not covered by the license (see TRADEMARKS.md).
+
+Third-party components (fetched by Swift Package Manager, not bundled in this repository):
+- Yams (MIT) – https://github.com/jpsim/Yams
+- AsyncHTTPClient, SwiftNIO, SwiftNIO SSL (Apache-2.0) – https://github.com/apple, https://github.com/swift-server
+- SwiftTerm (MIT) – https://github.com/migueldeicaza/SwiftTerm
+
+Kubernetes is a registered trademark of The Linux Foundation. Crowsnest is not affiliated with or endorsed by
+The Linux Foundation or the CNCF.
