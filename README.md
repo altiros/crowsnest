@@ -29,6 +29,13 @@ Crowsnest is **open source** (Apache-2.0). Official signed builds are on the [re
 **macOS (preview):** [download the latest release](https://github.com/altiros/crowsnest/releases) –
 unzip, move `Crowsnest.app` to Applications and open it. The app is signed with a Developer ID and notarized by Apple.
 
+Or with [Homebrew](https://brew.sh):
+
+```sh
+brew tap altiros/tap && brew trust altiros/tap   # once; current Homebrew asks you to trust third-party taps
+brew install --cask crowsnest
+```
+
 **iPad:** coming via TestFlight / the App Store.
 
 Watch this repository (*Watch → Custom → Releases*) to get notified about new versions.
