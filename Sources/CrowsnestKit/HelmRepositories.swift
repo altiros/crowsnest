@@ -92,7 +92,7 @@ public enum HelmRepositories {
 
     /// Repositories configured for the `helm` CLI on this machine (read-only), e.g. from `helm repo add`.
     public static func helmCLIRepositories(environment: [String: String] = ProcessInfo.processInfo.environment,
-                                           home: URL = FileManager.default.homeDirectoryForCurrentUser) -> [HelmRepository] {
+                                           home: URL = URL(fileURLWithPath: NSHomeDirectory())) -> [HelmRepository] {
         for url in helmCLIConfigCandidates(environment: environment, home: home) {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             return (try? parseRepositoriesFile(text)) ?? []

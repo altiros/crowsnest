@@ -126,15 +126,16 @@ struct ResourceListView: View {
             }
         }
         #if os(macOS)
-        .onDeleteCommand {
-            let targets = model.deletableSelection
-            if targets.count > 1 {
-                model.pendingBulkDelete = targets
-            } else if let object = targets.first {
-                model.pendingAction = .init(kind: .delete, object: object)
-            }
-        }
+        .onDeleteCommand { requestDelete() }  // ⌫ and Edit › Delete
         #endif
+        .background {
+            // ⌘⌫ like the Finder (the table itself only reports ⌫).
+            Button("Delete Selection") { requestDelete() }
+                .keyboardShortcut(.delete, modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
         .overlay { overlay }
         .inspector(isPresented: Binding(
             get: { model.selectedObject != nil },
@@ -159,6 +160,16 @@ struct ResourceListView: View {
                 guard interval > 0 else { break }
                 try? await Task.sleep(for: .seconds(interval))
             }
+        }
+    }
+
+    /// Asks to delete the selected objects (one confirmation for all).
+    private func requestDelete() {
+        let targets = model.deletableSelection
+        if targets.count > 1 {
+            model.pendingBulkDelete = targets
+        } else if let object = targets.first {
+            model.pendingAction = .init(kind: .delete, object: object)
         }
     }
 

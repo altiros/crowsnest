@@ -65,6 +65,8 @@ public struct SettingsView: View {
             .frame(minWidth: 560, minHeight: 420)
         }
         .formStyle(.grouped)
+        // The Settings window is its own scene – apply the appearance here too.
+        .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 260)
         #endif

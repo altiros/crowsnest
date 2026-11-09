@@ -54,7 +54,7 @@ check("shell: exit 0", code2 == 0, "\(code2.map(String.init) ?? "nil")")
 
 // 3. Unknown container → API error.
 do {
-    _ = try await client.exec(pod: pod.name, namespace: namespace, container: "gibtsnicht")
+    _ = try await client.exec(pod: pod.name, namespace: namespace, container: "does-not-exist")
     check("exec: error for unknown container", false)
 } catch {
     check("exec: error for unknown container", true, error.localizedDescription)
