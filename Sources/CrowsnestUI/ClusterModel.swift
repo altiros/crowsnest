@@ -7,6 +7,7 @@ public enum SidebarItem: Hashable, Sendable {
     case overview
     case portForwards
     case helmReleases
+    case helmCharts
     /// A page contributed by an extension (see `Extensions`).
     case extensionPage(String)
     case kind(String)
@@ -16,6 +17,7 @@ public enum SidebarItem: Hashable, Sendable {
         case .overview: "overview"
         case .portForwards: "portForwards"
         case .helmReleases: "helmReleases"
+        case .helmCharts: "helmCharts"
         case .extensionPage(let id): "ext:\(id)"
         case .kind(let id): "kind:\(id)"
         }
@@ -30,6 +32,7 @@ public enum SidebarItem: Hashable, Sendable {
             switch storageKey {
             case "portForwards": self = .portForwards
             case "helmReleases": self = .helmReleases
+            case "helmCharts": self = .helmCharts
             default: self = .overview
             }
         }
@@ -44,6 +47,8 @@ public enum SettingsKey {
     public static let lastSidebarItem = "lastSidebarItem"
     /// "system", "light" or "dark".
     public static let appearance = "appearance"
+    /// Helm repositories added in Crowsnest (JSON).
+    public static let helmRepositories = "helmRepositories"
 }
 
 /// State of one window: the selected cluster context, namespace, resource kind and objects.

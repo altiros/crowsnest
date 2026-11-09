@@ -80,6 +80,9 @@ struct HelmReleaseDetailView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
+                ForEach(Extensions.registered, id: \.id) { ext in
+                    if let actions = ext.helmReleaseActions(release: release, model: model) { actions }
+                }
                 Button {
                     model.selectedHelmReleaseKey = nil
                 } label: {
@@ -178,7 +181,7 @@ private struct HelmValuesView: View {
 }
 
 /// Read-only YAML with highlighting (and an optional copy button).
-private struct ReadOnlyYAML: View {
+struct ReadOnlyYAML: View {
     let text: String
     var showsCopy = true
     @State private var binding = ""

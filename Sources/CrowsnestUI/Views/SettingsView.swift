@@ -5,6 +5,8 @@ public struct SettingsView: View {
     @AppStorage(SettingsKey.refreshInterval) private var refreshInterval: Double = 5
     @AppStorage(SettingsKey.kubeconfigPath) private var kubeconfigPath: String = ""
     @AppStorage(SettingsKey.appearance) private var appearance = "system"
+    @State private var showHelmRepositories = false
+    @State private var helm = HelmCatalog.shared
 
     public init() {}
 
@@ -22,6 +24,14 @@ public struct SettingsView: View {
                     Text("System").tag("system")
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
+                }
+            }
+            Section("Helm") {
+                LabeledContent("Chart repositories") {
+                    HStack {
+                        Text("\(helm.repositories.count)").foregroundStyle(.secondary)
+                        Button("Manage…") { showHelmRepositories = true }
+                    }
                 }
             }
             ExtensionSettingsSections()
@@ -45,6 +55,14 @@ public struct SettingsView: View {
             KubeconfigFilesSection()
             HelpSection()
             #endif
+        }
+        .sheet(isPresented: $showHelmRepositories) {
+            NavigationStack {
+                HelmRepositoriesView()
+                    .navigationTitle("Helm Repositories")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showHelmRepositories = false } } }
+            }
+            .frame(minWidth: 560, minHeight: 420)
         }
         .formStyle(.grouped)
         #if os(macOS)

@@ -148,6 +148,8 @@ public struct RootView: View {
                 // Saved selection from a build with extensions, opened in the open-source build.
                 ContentUnavailableView("Not available in this build", systemImage: "puzzlepiece.extension")
             }
+        } else if model.sidebarSelection == .helmCharts {
+            HelmChartsView()
         } else if model.sidebarSelection == .helmReleases {
             HelmReleasesView()
         } else if model.sidebarSelection == .portForwards {
@@ -172,6 +174,7 @@ struct ContentSearch: ViewModifier {
         guard model.configError == nil, model.kubeconfig != nil, model.connectionError == nil else { return nil }
         switch model.sidebarSelection {
         case .helmReleases: return "Release or chart"
+        case .helmCharts: return "Chart, keyword or repository"
         case .kind: return model.selectedKind != nil ? "Name or label=value" : nil
         default: return nil
         }
@@ -213,14 +216,19 @@ struct MainToolbar: ToolbarContent {
             .keyboardShortcut("e", modifiers: [.command, .shift])
             .help("Show/hide editor and terminals (⇧⌘E)")
             // Only lists of namespaced kinds can be filtered; the overview is always cluster-wide.
-            if model.selectedKind?.namespaced == true || model.sidebarSelection == .helmReleases {
+            // Charts: the namespace goes into the install command.
+            if model.selectedKind?.namespaced == true || model.sidebarSelection == .helmReleases || model.sidebarSelection == .helmCharts {
                 namespacePicker
             }
             Button {
                 model.metrics.sampleNow()
                 Task {
                     await model.refreshNamespaces()
-                    if model.sidebarSelection == .helmReleases { await model.loadHelm() } else { await model.reload() }
+                    switch model.sidebarSelection {
+                    case .helmReleases: await model.loadHelm()
+                    case .helmCharts: await HelmCatalog.shared.refresh()
+                    default: await model.reload()
+                    }
                 }
             } label: {
                 Label("Refresh", systemImage: "arrow.clockwise")

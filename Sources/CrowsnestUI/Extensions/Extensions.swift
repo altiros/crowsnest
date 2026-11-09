@@ -15,6 +15,15 @@ public protocol CrowsnestExtension: AnyObject {
     var pages: [ExtensionPage] { get }
     /// Optional section for the settings window/sheet (e.g. license).
     func settingsSection() -> AnyView?
+    /// Optional actions for a chart version in the chart browser (e.g. install).
+    func helmChartActions(chart: HelmChart, version: HelmChartVersion, model: ClusterModel) -> AnyView?
+    /// Optional actions for an installed Helm release (e.g. upgrade, rollback, uninstall).
+    func helmReleaseActions(release: HelmRelease, model: ClusterModel) -> AnyView?
+}
+
+extension CrowsnestExtension {
+    public func helmChartActions(chart: HelmChart, version: HelmChartVersion, model: ClusterModel) -> AnyView? { nil }
+    public func helmReleaseActions(release: HelmRelease, model: ClusterModel) -> AnyView? { nil }
 }
 
 /// A sidebar page provided by an extension.

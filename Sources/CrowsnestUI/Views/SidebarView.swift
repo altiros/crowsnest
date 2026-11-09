@@ -33,6 +33,8 @@ struct SidebarView: View {
                     }
                 }
                 Section("Helm") {
+                    Label("Charts", systemImage: "books.vertical")
+                        .tag(SidebarItem.helmCharts)
                     Label("Releases", systemImage: "shippingbox")
                         .tag(SidebarItem.helmReleases)
                 }
