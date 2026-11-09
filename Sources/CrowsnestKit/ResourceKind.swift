@@ -34,6 +34,18 @@ public enum CellValue: Sendable, Hashable {
             // Younger objects (later dates) first in ascending order, like "smallest age first".
             let dx = x ?? .distantPast, dy = y ?? .distantPast
             return dx == dy ? .orderedSame : (dx > dy ? .orderedAscending : .orderedDescending)
+        case (.text(let x), .text(let y)):
+            // Kubernetes quantities ("500m", "2", "16Gi", "512Mi") compare by value, not as text.
+            switch (Quantity.parse(x), Quantity.parse(y)) {
+            case let (qx?, qy?):
+                return qx == qy ? .orderedSame : (qx < qy ? .orderedAscending : .orderedDescending)
+            case (.some, nil):
+                return .orderedAscending
+            case (nil, .some):
+                return .orderedDescending
+            case (nil, nil):
+                return x.localizedStandardCompare(y)
+            }
         default:
             return a.display().localizedStandardCompare(b.display())
         }

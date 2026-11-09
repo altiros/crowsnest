@@ -86,14 +86,27 @@ struct ResourceListView: View {
 
     private var rows: [KubeObject] {
         let filtered = model.filteredObjects
-        guard let comparator = sortOrder.first else { return filtered }
-        return filtered.sorted { comparator.compare($0, $1) == .orderedAscending }
+        guard let selected = sortOrder.first else { return filtered }
+        // The comparator stored by the table holds the column as it was when the header was clicked; its value
+        // closure may capture outdated data (e.g. metrics). Sort with the current column instead.
+        let column = columns.first { $0.id == selected.column.id } ?? selected.column
+        let comparator = ColumnComparator(column: column, order: selected.order)
+        return filtered.sorted { a, b in
+            switch comparator.compare(a, b) {
+            case .orderedAscending: true
+            case .orderedDescending: false
+            // Stable order for equal values, so rows don't jump on refresh.
+            case .orderedSame: (a.namespace ?? "", a.name) < (b.namespace ?? "", b.name)
+            }
+        }
     }
 
     var body: some View {
         @Bindable var model = model
         let now = model.lastRefresh ?? .now
-        Table(of: KubeObject.self, selection: $model.selectedObjectID, sortOrder: $sortOrder) {
+        // Explicit binding: with `$model.selectedObjectIDs` row clicks didn't select on macOS 27 (observed in testing).
+        let selection = Binding(get: { model.selectedObjectIDs }, set: { model.selectedObjectIDs = $0 })
+        Table(of: KubeObject.self, selection: selection, sortOrder: $sortOrder) {
             TableColumnForEach(columns) { column in
                 TableColumn(column.title, sortUsing: ColumnComparator(column: column)) { object in
                     CellView(value: column.value(object), now: now)
@@ -106,15 +119,27 @@ struct ResourceListView: View {
         }
         .id(kind.id + (model.namespace == nil ? "*" : ""))
         .contextMenu(forSelectionType: KubeObject.ID.self) { ids in
-            if let id = ids.first, let object = model.objects.first(where: { $0.id == id }) {
+            if ids.count > 1 {
+                BulkActionsMenu(objects: model.objects.filter { ids.contains($0.id) }, kind: kind)
+            } else if let id = ids.first, let object = model.objects.first(where: { $0.id == id }) {
                 ObjectActionsMenu(object: object)
             }
         }
+        #if os(macOS)
+        .onDeleteCommand {
+            let targets = model.deletableSelection
+            if targets.count > 1 {
+                model.pendingBulkDelete = targets
+            } else if let object = targets.first {
+                model.pendingAction = .init(kind: .delete, object: object)
+            }
+        }
+        #endif
         .overlay { overlay }
-        .searchable(text: $model.searchText, placement: .toolbar, prompt: "Name or label=value")
         .inspector(isPresented: Binding(
             get: { model.selectedObject != nil },
-            set: { if !$0 { model.selectedObjectID = nil } }
+            // Only a dismissed single-object inspector clears the selection, never a multiple selection.
+            set: { if !$0 && model.selectedObjectIDs.count == 1 { model.selectedObjectIDs = [] } }
         )) {
             Group {
                 if let object = model.selectedObject {
@@ -139,6 +164,7 @@ struct ResourceListView: View {
 
     private var subtitle: String {
         var parts = ["\(model.filteredObjects.count) objects"]
+        if model.selectedObjectIDs.count > 1 { parts.append("\(model.selectedObjectIDs.count) selected") }
         if let date = model.lastRefresh { parts.append("updated \(date.formatted(date: .omitted, time: .standard))") }
         return parts.joined(separator: " · ")
     }
@@ -183,6 +209,26 @@ extension ResourceColumn.Width {
 }
 
 /// Context menu / action menu for an object.
+/// Context menu for several selected rows.
+struct BulkActionsMenu: View {
+    @Environment(ClusterModel.self) private var model
+    let objects: [KubeObject]
+    let kind: ResourceKind
+
+    var body: some View {
+        let deletable = objects.filter { model.availableActions(for: $0).contains(.delete) }
+        Button("Copy Names", systemImage: "doc.on.doc") {
+            Pasteboard.copy(objects.map(\.name).joined(separator: "\n"))
+        }
+        if !deletable.isEmpty {
+            Divider()
+            Button("Delete \(deletable.count) \(deletable.count == 1 ? kind.kind : kind.title)…", systemImage: "trash", role: .destructive) {
+                model.pendingBulkDelete = deletable
+            }
+        }
+    }
+}
+
 struct ObjectActionsMenu: View {
     @Environment(ClusterModel.self) private var model
     let object: KubeObject

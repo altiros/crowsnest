@@ -24,7 +24,7 @@ public struct RootView: View {
         } detail: {
             #if os(macOS)
             VSplitView {
-                content.frame(minHeight: 220)
+                content.modifier(ContentSearch()).frame(minHeight: 220)
                 if model.isEditorVisible {
                     EditorDock().frame(minHeight: 280, idealHeight: 380)
                 }
@@ -34,7 +34,7 @@ public struct RootView: View {
             .toolbar { MainToolbar() }
             #else
             VStack(spacing: 0) {
-                content
+                content.modifier(ContentSearch())
                 if model.isEditorVisible {
                     Divider()
                     EditorDock().frame(height: 360)
@@ -56,6 +56,20 @@ public struct RootView: View {
                 Task { await model.perform(action) }
             }
             Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog(
+            "Delete \(model.pendingBulkDelete?.count ?? 0) objects?",
+            isPresented: Binding(get: { model.pendingBulkDelete != nil }, set: { if !$0 { model.pendingBulkDelete = nil } }),
+            titleVisibility: .visible,
+            presenting: model.pendingBulkDelete
+        ) { targets in
+            Button("Delete \(targets.count) Objects", role: .destructive) {
+                Task { await model.delete(targets) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { targets in
+            let names = targets.prefix(12).map { o in o.namespace.map { "\($0)/\(o.name)" } ?? o.name }
+            Text(names.joined(separator: "\n") + (targets.count > 12 ? "\n… and \(targets.count - 12) more" : ""))
         }
         .confirmationDialog(
             "Discard unsaved changes in \"\(model.tabPendingClose?.title ?? "")\"?",
@@ -144,6 +158,31 @@ public struct RootView: View {
             ResourceListView(kind: kind)
         } else {
             ContentUnavailableView("Resource not available", systemImage: "questionmark.folder")
+        }
+    }
+}
+
+/// The one search field of the detail column. Pages must not add their own `.searchable`: when two toolbar search
+/// fields swap during a page change (e.g. Helm Releases ↔ Pods), AppKit's NSToolbar throws and the app crashes.
+/// Here the field stays in place across searchable pages and only its prompt changes.
+struct ContentSearch: ViewModifier {
+    @Environment(ClusterModel.self) private var model
+
+    private var prompt: String? {
+        guard model.configError == nil, model.kubeconfig != nil, model.connectionError == nil else { return nil }
+        switch model.sidebarSelection {
+        case .helmReleases: return "Release or chart"
+        case .kind: return model.selectedKind != nil ? "Name or label=value" : nil
+        default: return nil
+        }
+    }
+
+    func body(content: Content) -> some View {
+        @Bindable var model = model
+        if let prompt {
+            content.searchable(text: $model.searchText, placement: .toolbar, prompt: Text(prompt))
+        } else {
+            content
         }
     }
 }

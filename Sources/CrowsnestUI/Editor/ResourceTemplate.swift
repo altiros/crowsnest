@@ -1,3 +1,4 @@
+import CrowsnestKit
 import Foundation
 
 /// Starting points for "new resource", like Lens' create-resource templates.
@@ -160,8 +161,8 @@ public struct ResourceTemplate: Identifiable, Sendable {
     ]
 
     public static let empty = ResourceTemplate(name: "Empty", symbol: "doc", yaml: """
-    # Ein oder mehrere Manifeste, getrennt durch ---
-    # Anwenden = Server-Side Apply (legt an oder aktualisiert)
+    # One or more manifests, separated by ---
+    # Apply = server-side apply (creates or updates)
     apiVersion: v1
     kind:
     metadata:
@@ -169,4 +170,30 @@ public struct ResourceTemplate: Identifiable, Sendable {
       namespace: {{namespace}}
 
     """)
+
+    /// Kinds that the cluster manages itself – no "New …" shortcut for them.
+    static let systemManagedKinds: Set<String> = [
+        "Node", "Event", "ReplicaSet", "Endpoints", "EndpointSlice", "Lease", "ControllerRevision", "PodMetrics", "NodeMetrics",
+    ]
+
+    /// Starting point for a new object of `kind`: the curated template if there is one, otherwise a minimal skeleton.
+    /// `nil` for kinds that are managed by the cluster.
+    public static func forKind(_ kind: ResourceKind) -> ResourceTemplate? {
+        guard !systemManagedKinds.contains(kind.kind) else { return nil }
+        let apiVersion = kind.group.isEmpty ? kind.version : "\(kind.group)/\(kind.version)"
+        if let curated = all.first(where: {
+            $0.name == kind.kind && $0.yaml.contains("apiVersion: \(apiVersion)\n") && $0.yaml.contains("kind: \(kind.kind)\n")
+        }) {
+            return curated
+        }
+        var yaml = """
+        apiVersion: \(apiVersion)
+        kind: \(kind.kind)
+        metadata:
+          name: my-\(kind.kind.lowercased())
+
+        """
+        if kind.namespaced { yaml += "  namespace: {{namespace}}\n" }
+        return ResourceTemplate(name: kind.kind, symbol: kind.symbol, yaml: yaml)
+    }
 }

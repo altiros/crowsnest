@@ -92,28 +92,50 @@ struct EditorTabButton: View {
     }
 }
 
+/// "New" menu. In a resource list the current kind comes first, and clicking the button (not the arrow) creates it.
 struct NewResourceMenu: View {
     @Environment(ClusterModel.self) private var model
     var label: String?
 
+    private var current: ResourceTemplate? { model.selectedKind.flatMap(ResourceTemplate.forKind) }
+
     var body: some View {
-        Menu {
-            Button("Empty Manifest", systemImage: "doc") { model.newResourceTab() }
-            Divider()
-            ForEach(ResourceTemplate.all) { template in
-                Button(template.name, systemImage: template.symbol) { model.newResourceTab(template) }
-            }
-        } label: {
-            if let label {
-                Label(label, systemImage: "plus")
+        Group {
+            if let current {
+                Menu { items(current: current) } label: { labelView(current: current) } primaryAction: {
+                    model.newResourceTab(current)
+                }
+                .help("New \(current.name) – use the arrow for other resources")
             } else {
-                Image(systemName: "plus")
+                Menu { items(current: nil) } label: { labelView(current: nil) }
+                    .help("New Resource")
             }
         }
         .borderlessMenuStyle()
         .fixedSize()
-        .help("New Resource")
         .disabled(model.client == nil)
+    }
+
+    @ViewBuilder
+    private func items(current: ResourceTemplate?) -> some View {
+        if let current {
+            Button("New \(current.name)", systemImage: current.symbol) { model.newResourceTab(current) }
+            Divider()
+        }
+        Button("Empty Manifest", systemImage: "doc") { model.newResourceTab() }
+        Divider()
+        ForEach(ResourceTemplate.all.filter { $0.id != current?.id }) { template in
+            Button(template.name, systemImage: template.symbol) { model.newResourceTab(template) }
+        }
+    }
+
+    @ViewBuilder
+    private func labelView(current: ResourceTemplate?) -> some View {
+        if let label {
+            Label(current.map { "New \($0.name)" } ?? label, systemImage: "plus")
+        } else {
+            Image(systemName: "plus")
+        }
     }
 }
 

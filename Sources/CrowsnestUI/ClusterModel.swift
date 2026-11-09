@@ -79,7 +79,13 @@ public final class ClusterModel {
     public private(set) var listError: String?
     public private(set) var isLoading = false
     public internal(set) var lastRefresh: Date?
-    public var selectedObjectID: KubeObject.ID?
+    /// Selected rows of the resource list (multiple selection).
+    public var selectedObjectIDs: Set<KubeObject.ID> = []
+    /// The selected object's id when exactly one row is selected (drives the detail inspector).
+    public var selectedObjectID: KubeObject.ID? {
+        get { selectedObjectIDs.count == 1 ? selectedObjectIDs.first : nil }
+        set { selectedObjectIDs = newValue.map { [$0] } ?? [] }
+    }
     public var searchText = ""
     /// Pods in the listed namespace, for usage of workloads (only loaded for workload kinds).
     public private(set) var workloadPods: [KubeObject] = []
@@ -88,6 +94,8 @@ public final class ClusterModel {
 
     // Actions & feedback
     public var pendingAction: PendingAction?
+    /// Objects waiting for confirmation of a bulk delete.
+    public var pendingBulkDelete: [KubeObject]?
     public var scaleTarget: KubeObject?
     public var alertMessage: String?
     public var toast: String?
@@ -344,6 +352,32 @@ public final class ClusterModel {
         } catch {
             alertMessage = error.localizedDescription
         }
+    }
+
+    /// Selected objects that can be deleted (nodes never are).
+    public var deletableSelection: [KubeObject] {
+        objects.filter { selectedObjectIDs.contains($0.id) && availableActions(for: $0).contains(.delete) }
+    }
+
+    /// Deletes several objects; reports failures in one alert.
+    public func delete(_ targets: [KubeObject]) async {
+        guard let client else { return }
+        var failures: [String] = []
+        for object in targets {
+            guard let kind = kind(for: object) else { continue }
+            do {
+                try await client.delete(kind, name: object.name, namespace: object.namespace)
+                selectedObjectIDs.remove(object.id)
+            } catch {
+                failures.append("\(object.name): \(error.localizedDescription)")
+            }
+        }
+        let deleted = targets.count - failures.count
+        if deleted > 0 { toast = deleted == 1 ? "Deleting \(targets[0].name)" : "Deleting \(deleted) objects" }
+        if !failures.isEmpty {
+            alertMessage = "\(failures.count) of \(targets.count) objects could not be deleted:\n" + failures.joined(separator: "\n")
+        }
+        await reload()
     }
 
     public func scale(_ object: KubeObject, to replicas: Int) async {

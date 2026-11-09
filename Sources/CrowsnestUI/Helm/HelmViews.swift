@@ -32,7 +32,6 @@ struct HelmReleasesView: View {
                                        description: Text(model.namespace.map { "in namespace \($0)" } ?? ""))
             }
         }
-        .searchable(text: $model.searchText, placement: .toolbar, prompt: "Release or chart")
         .inspector(isPresented: Binding(
             get: { model.selectedHelmRelease != nil },
             set: { if !$0 { model.selectedHelmReleaseKey = nil } }
