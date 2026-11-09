@@ -24,7 +24,7 @@ public struct RootView: View {
         } detail: {
             #if os(macOS)
             VSplitView {
-                content.modifier(ContentSearch()).frame(minHeight: 220)
+                bannerAndContent.modifier(ContentSearch()).frame(minHeight: 220)
                 if model.isEditorVisible {
                     EditorDock().frame(minHeight: 280, idealHeight: 380)
                 }
@@ -34,7 +34,7 @@ public struct RootView: View {
             .toolbar { MainToolbar() }
             #else
             VStack(spacing: 0) {
-                content.modifier(ContentSearch())
+                bannerAndContent.modifier(ContentSearch())
                 if model.isEditorVisible {
                     Divider()
                     EditorDock().frame(height: 360)
@@ -111,6 +111,16 @@ public struct RootView: View {
         #endif
     }
 
+    private var bannerAndContent: some View {
+        VStack(spacing: 0) {
+            if model.isDemo {
+                DemoBanner()
+                Divider()
+            }
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         if let error = model.configError {
@@ -128,6 +138,9 @@ public struct RootView: View {
                 #else
                 KubeconfigImportButtons()
                 #endif
+                Button("Try the Demo Cluster", systemImage: "play.circle") { Task { await model.openDemo() } }
+                    .buttonStyle(.bordered)
+                    .padding(.top, 4)
             }
         } else if model.kubeconfig == nil {
             ProgressView()
@@ -286,5 +299,50 @@ struct ScaleSheet: View {
         .padding(20)
         .frame(minWidth: 340)
         .onAppear { replicas = object["spec.replicas"]?.int ?? 1 }
+    }
+}
+
+/// Shown above the content while the simulated demo cluster is selected.
+struct DemoBanner: View {
+    @Environment(ClusterModel.self) private var model
+    @State private var showImport = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "sparkles").foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Demo Cluster").font(.callout.weight(.semibold))
+                Text("Simulated cluster – try anything: scale, restart, delete, edit YAML. Changes are kept until the app quits.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            #if os(macOS)
+            Text("Switch to your clusters in the sidebar.").font(.caption).foregroundStyle(.secondary)
+            #else
+            Button("Connect Your Cluster…") { showImport = true }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            #endif
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.tint.opacity(0.08))
+        #if !os(macOS)
+        .sheet(isPresented: $showImport) {
+            NavigationStack {
+                VStack(spacing: 16) {
+                    Text("Import a kubeconfig with embedded certificates or tokens, e.g. created with \"kubectl config view --raw --flatten --minify\". Exec auth plugins (EKS, GKE, AKS logins) are not available on iPad.")
+                        .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    KubeconfigImportButtons()
+                    Spacer()
+                }
+                .padding(24)
+                .navigationTitle("Connect Your Cluster")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { showImport = false } } }
+            }
+            .environment(model)
+            .onChange(of: model.contextName) { if !model.isDemo { showImport = false } }
+        }
+        #endif
     }
 }

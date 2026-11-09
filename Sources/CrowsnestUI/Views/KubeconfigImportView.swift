@@ -50,7 +50,10 @@ struct KubeconfigImportButtons: View {
             resultMessage = "Imported: \(contexts.joined(separator: ", "))"
                 + (results.flatMap(\.warnings).isEmpty ? "" : "\n" + results.flatMap(\.warnings).joined(separator: "\n"))
             errorMessage = nil
-            Task { await model.loadKubeconfig() }
+            Task {
+                await model.loadKubeconfig()
+                if let first = contexts.first { await model.selectContext(first) }
+            }
         } catch {
             errorMessage = error.localizedDescription
             resultMessage = nil

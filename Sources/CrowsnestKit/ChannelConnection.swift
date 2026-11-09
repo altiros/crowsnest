@@ -94,6 +94,9 @@ extension KubeClient {
 
     /// Opens a WebSocket to `path` (e.g. `…/pods/x/exec`). Query items may repeat (`command=…`).
     public func openChannel(path: String, query: [(String, String)], protocols: [String]) async throws -> ChannelConnection {
+        if demo != nil {
+            throw KubeError.unsupported("shells and port forwarding in the demo cluster – connect your own cluster to use them")
+        }
         do {
             return try await connectChannel(path: path, query: query, protocols: protocols, forceAuthRefresh: false)
         } catch let error as KubeError where error.httpStatus == 401 {
@@ -105,7 +108,7 @@ extension KubeClient {
     private func connectChannel(path: String, query: [(String, String)], protocols: [String],
                                 forceAuthRefresh: Bool) async throws -> ChannelConnection {
         let server = config.server
-        guard let host = server.host else { throw KubeError.invalidConfig("Server-URL ohne Host") }
+        guard let host = server.host else { throw KubeError.invalidConfig("Server URL without host") }
         let useTLS = server.scheme?.lowercased() != "http"
         let port = server.port ?? (useTLS ? 443 : 80)
 

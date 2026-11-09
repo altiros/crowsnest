@@ -190,7 +190,10 @@ struct ClusterOverviewView: View {
                         StatusDot(tone: status.tone)
                         Button(node.name) { model.reveal(kind: .nodes, name: node.name, namespace: nil) }
                             .linkButtonStyle()
-                            .frame(width: 140, alignment: .leading)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(width: 170, alignment: .leading)
+                            .help(node.name)
                         Text(NodeStatus.roles(of: node)).font(.caption).foregroundStyle(.secondary).frame(width: 110, alignment: .leading)
                         if let usage {
                             LabeledMiniBar(label: "CPU", fraction: cpu > 0 ? usage.cpu / cpu : 0)
@@ -289,11 +292,11 @@ struct LabeledMiniBar: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+            Text(label).font(.caption2).foregroundStyle(.secondary).fixedSize()
             ProgressView(value: min(max(fraction, 0), 1))
                 .tint(fraction < 0.7 ? .green : (fraction < 0.9 ? .orange : .red))
                 .frame(width: 80)
-            Text("\(Int((fraction * 100).rounded()))%").font(.caption2.monospacedDigit()).frame(width: 34, alignment: .trailing)
+            Text("\(Int((fraction * 100).rounded()))%").font(.caption2.monospacedDigit()).lineLimit(1).frame(width: 40, alignment: .trailing)
         }
     }
 }

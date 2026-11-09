@@ -55,6 +55,7 @@ Watch this repository (*Watch → Custom → Releases*) to get notified about ne
 - **Port forwarding** – to pods and services, with an overview of active forwards
 - **Actions** – scale, rollout restart, cordon/uncordon, trigger a CronJob, delete
 - **Multiple clusters** – every context of your kubeconfig
+- **Demo cluster** – a built-in simulated cluster to try everything without a kubeconfig (no network access)
 - **Authentication** – client certificates, tokens and, on the Mac, exec plugins (`aws`, `gke-gcloud-auth-plugin`, `kubelogin`, …)
 
 ### Pod shell

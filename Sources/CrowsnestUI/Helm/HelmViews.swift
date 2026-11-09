@@ -47,7 +47,7 @@ struct HelmReleasesView: View {
         #if os(macOS)
         .navigationSubtitle("\(releases.count) releases")
         #endif
-        .task(id: "\(model.contextName ?? "")|\(model.namespace ?? "*")") {
+        .task(id: "\(model.contextName ?? "")|\(model.namespace ?? "*")|\(model.client != nil)") {
             while !Task.isCancelled {
                 await model.loadHelm()
                 let interval = max(ClusterModel.refreshInterval, 10)

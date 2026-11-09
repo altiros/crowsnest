@@ -186,13 +186,14 @@ public final class ClusterModel {
         // iPadOS: only kubeconfigs imported into the app container.
         let urls = KubeconfigStore.files()
         guard !urls.isEmpty else {
+            if await reopenDemo() { return }
             kubeconfig = nil
             configError = "No kubeconfig imported yet."
             return
         }
         #endif
         do {
-            let config = try KubeConfig.load(from: urls)
+            let config = try KubeConfig.load(from: urls).addingDemoContext()
             kubeconfig = config
             configError = nil
             let remembered = UserDefaults.standard.string(forKey: SettingsKey.lastContext)
@@ -203,9 +204,27 @@ public final class ClusterModel {
                 await selectContext(preferred, force: true)
             }
         } catch {
+            if await reopenDemo() { return }
             kubeconfig = nil
             configError = error.localizedDescription
         }
+    }
+
+    /// The built-in demo cluster is selected (simulated, no network).
+    public var isDemo: Bool { contextName == DemoCluster.contextName }
+
+    /// Switches to the built-in demo cluster – also when no kubeconfig is available.
+    public func openDemo() async {
+        kubeconfig = (kubeconfig ?? KubeConfig()).addingDemoContext()
+        configError = nil
+        await selectContext(DemoCluster.contextName, force: true)
+    }
+
+    /// Without a kubeconfig, reopens the demo cluster if it was used last.
+    private func reopenDemo() async -> Bool {
+        guard UserDefaults.standard.string(forKey: SettingsKey.lastContext) == DemoCluster.contextName else { return false }
+        await openDemo()
+        return true
     }
 
     public func selectContext(_ name: String, force: Bool = false) async {

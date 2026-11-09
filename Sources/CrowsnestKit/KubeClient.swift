@@ -18,9 +18,12 @@ public actor KubeClient {
     nonisolated let sslContext: NIOSSLContext
     private var execCredential: ExecCredential?
     var discoveredKinds: [String: ResourceKind] = [:]
+    /// Set for the built-in demo cluster: requests are answered in memory instead of over the network.
+    nonisolated let demo: DemoCluster?
 
     public init(config: ConnectionConfig) throws {
         self.config = config
+        demo = config.isDemo ? DemoCluster() : nil
         var tls = TLSConfiguration.makeClientConfiguration()
         do {
             if config.insecureSkipTLSVerify {
@@ -131,6 +134,9 @@ public actor KubeClient {
     public func send(_ method: Method, path: String, query: [String: String] = [:], body: Data? = nil,
                      contentType: String = "application/json", accept: String = "application/json",
                      timeout: TimeAmount = .seconds(30)) async throws -> Data {
+        if let demo {
+            return try await demo.handle(method, path: path, query: query, body: body, contentType: contentType)
+        }
         var attempt = 0
         while true {
             let request = try await makeRequest(method, path: path, query: query, body: body, contentType: contentType,
@@ -298,7 +304,8 @@ public actor KubeClient {
 
     /// Streams log lines (`follow=true`). Each element is a batch of complete lines.
     public nonisolated func followLogs(pod: String, namespace: String, options: LogOptions) -> AsyncThrowingStream<[String], Error> {
-        AsyncThrowingStream { continuation in
+        if let demo { return Self.demoLogStream(demo, client: self, pod: pod, namespace: namespace, options: options) }
+        return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
                     let request = try await self.makeRequest(
@@ -320,6 +327,30 @@ public actor KubeClient {
                         continuation.yield(lines)
                     }
                     if !pending.isEmpty { continuation.yield([String(decoding: pending, as: UTF8.self)]) }
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private nonisolated static func demoLogStream(_ demo: DemoCluster, client: KubeClient, pod: String, namespace: String,
+                                                  options: LogOptions) -> AsyncThrowingStream<[String], Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let initial = try await client.logs(pod: pod, namespace: namespace, options: options)
+                    continuation.yield(initial.split(separator: "\n", omittingEmptySubsequences: false).dropLast().map(String.init))
+                    while !Task.isCancelled {
+                        try await Task.sleep(for: .milliseconds(1500))
+                        if let line = try await demo.liveLogLine(pod: pod, namespace: namespace, container: options.container) {
+                            continuation.yield([line])
+                        }
+                    }
                     continuation.finish()
                 } catch is CancellationError {
                     continuation.finish()
