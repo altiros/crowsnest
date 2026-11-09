@@ -168,12 +168,20 @@ public final class ClusterModel {
 
     // MARK: - Kubeconfig & context
 
-    public func loadKubeconfig() async {
-        #if os(macOS)
+    #if os(macOS)
+    /// The kubeconfig files the app uses (Settings › kubeconfig, else $KUBECONFIG or ~/.kube/config) –
+    /// e.g. for running CLI tools against the same cluster.
+    public static func kubeconfigFileURLs() -> [URL] {
         let custom = UserDefaults.standard.string(forKey: SettingsKey.kubeconfigPath) ?? ""
-        let urls = custom.isEmpty
+        return custom.isEmpty
             ? KubeConfig.defaultFileURLs()
             : custom.split(separator: ":").map { URL(fileURLWithPath: NSString(string: String($0)).expandingTildeInPath) }
+    }
+    #endif
+
+    public func loadKubeconfig() async {
+        #if os(macOS)
+        let urls = Self.kubeconfigFileURLs()
         #else
         // iPadOS: only kubeconfigs imported into the app container.
         let urls = KubeconfigStore.files()

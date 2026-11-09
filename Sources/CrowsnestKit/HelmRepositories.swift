@@ -78,6 +78,13 @@ public struct HelmChart: Sendable, Hashable, Identifiable {
 
     public var id: String { "\(repository.name)/\(name)" }
     public var latest: HelmChartVersion { versions[0] }
+
+    /// `versions` must not be empty and should be sorted newest first.
+    public init(repository: HelmRepository, name: String, versions: [HelmChartVersion]) {
+        self.repository = repository
+        self.name = name
+        self.versions = versions
+    }
 }
 
 /// Files of a downloaded chart archive that are shown to the user.

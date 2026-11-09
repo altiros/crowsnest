@@ -27,6 +27,30 @@ public struct HelmRelease: Sendable, Identifiable, Equatable {
     public var storageKind: String
     public var storageName: String
 
+    public init(name: String, namespace: String, revision: Int, status: String, description: String = "", firstDeployed: Date? = nil,
+                lastDeployed: Date? = nil, notes: String = "", chartName: String, chartVersion: String, appVersion: String = "",
+                chartDescription: String = "", userValues: JSONValue = .object([:]), chartValues: JSONValue = .object([:]),
+                manifest: String = "", hooks: [Hook] = [], storageKind: String = "Secret", storageName: String = "") {
+        self.name = name
+        self.namespace = namespace
+        self.revision = revision
+        self.status = status
+        self.description = description
+        self.firstDeployed = firstDeployed
+        self.lastDeployed = lastDeployed
+        self.notes = notes
+        self.chartName = chartName
+        self.chartVersion = chartVersion
+        self.appVersion = appVersion
+        self.chartDescription = chartDescription
+        self.userValues = userValues
+        self.chartValues = chartValues
+        self.manifest = manifest
+        self.hooks = hooks
+        self.storageKind = storageKind
+        self.storageName = storageName
+    }
+
     public struct Hook: Sendable, Equatable {
         public var name: String
         public var kind: String
