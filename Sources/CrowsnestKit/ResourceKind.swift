@@ -36,7 +36,7 @@ public enum CellValue: Sendable, Hashable {
             return dx == dy ? .orderedSame : (dx > dy ? .orderedAscending : .orderedDescending)
         case (.text(let x), .text(let y)):
             // Kubernetes quantities ("500m", "2", "16Gi", "512Mi") compare by value, not as text.
-            switch (Quantity.parse(x), Quantity.parse(y)) {
+            switch (sortableQuantity(x), sortableQuantity(y)) {
             case let (qx?, qy?):
                 return qx == qy ? .orderedSame : (qx < qy ? .orderedAscending : .orderedDescending)
             case (.some, nil):
@@ -50,6 +50,13 @@ public enum CellValue: Sendable, Hashable {
             return a.display().localizedStandardCompare(b.display())
         }
     }
+}
+
+/// A text cell's value as a Kubernetes quantity, for sorting. Only text that starts with a digit counts
+/// (so names like "inf" or "nan" stay text).
+private func sortableQuantity(_ s: String) -> Double? {
+    guard let first = s.first, first.isASCII, first.isNumber, let value = Quantity.parse(s), value.isFinite else { return nil }
+    return value
 }
 
 public struct ResourceColumn: Sendable, Identifiable {

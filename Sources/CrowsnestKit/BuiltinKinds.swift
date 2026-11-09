@@ -30,7 +30,8 @@ extension ResourceKind {
             ResourceColumn("Internal IP") { .text(NodeStatus.address(of: $0, type: "InternalIP") ?? "–") },
             ResourceColumn("CPU", width: .narrow, value: text("status.capacity.cpu")),
             ResourceColumn("Memory", width: .narrow) { o in
-                .text(o["status.capacity.memory"]?.string.flatMap(Quantity.parse).map(Quantity.formatBytes) ?? "–")
+                guard let bytes = o["status.capacity.memory"]?.string.flatMap(Quantity.parse) else { return .text("–") }
+                return .meter(value: bytes, fraction: nil, text: Quantity.formatBytes(bytes))  // sorts by bytes
             },
         ]
     )
@@ -139,7 +140,7 @@ extension ResourceKind {
             ResourceColumn("Duration", width: .narrow) { o in
                 guard let start = o["status.startTime"]?.string.flatMap(KubeDate.parse) else { return .text("–") }
                 let end = o["status.completionTime"]?.string.flatMap(KubeDate.parse) ?? .now
-                return .text(KubeDate.age(since: start, now: end))
+                return .meter(value: end.timeIntervalSince(start), fraction: nil, text: KubeDate.age(since: start, now: end))  // sorts by seconds
             },
         ],
         capabilities: [.logs]
