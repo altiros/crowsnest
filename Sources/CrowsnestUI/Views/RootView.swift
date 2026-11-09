@@ -29,6 +29,9 @@ public struct RootView: View {
                     EditorDock().frame(minHeight: 280, idealHeight: 380)
                 }
             }
+            // Attached once to the detail column: per-branch `.toolbar` modifiers on the
+            // switching content left stale copies behind on macOS (duplicate New/Dock/Refresh).
+            .toolbar { MainToolbar() }
             #else
             VStack(spacing: 0) {
                 content
@@ -37,6 +40,7 @@ public struct RootView: View {
                     EditorDock().frame(height: 360)
                 }
             }
+            .toolbar { MainToolbar() }
             #endif
         }
         .environment(model)
@@ -123,31 +127,23 @@ public struct RootView: View {
                     Task { if let name = model.contextName { await model.selectContext(name, force: true) } }
                 }
             }
-            .toolbar { MainToolbar() }
         } else if case .extensionPage(let id) = model.sidebarSelection {
             if let page = Extensions.page(id: id) {
                 page.content(model)
-                    .toolbar { MainToolbar() }
             } else {
                 // Saved selection from a build with extensions, opened in the open-source build.
                 ContentUnavailableView("Not available in this build", systemImage: "puzzlepiece.extension")
-                    .toolbar { MainToolbar() }
             }
         } else if model.sidebarSelection == .helmReleases {
             HelmReleasesView()
-                .toolbar { MainToolbar() }
         } else if model.sidebarSelection == .portForwards {
             PortForwardListView()
-                .toolbar { MainToolbar() }
         } else if model.sidebarSelection == .overview || model.sidebarSelection == nil {
             ClusterOverviewView()
-                .toolbar { MainToolbar() }
         } else if let kind = model.selectedKind {
             ResourceListView(kind: kind)
-                .toolbar { MainToolbar() }
         } else {
             ContentUnavailableView("Resource not available", systemImage: "questionmark.folder")
-                .toolbar { MainToolbar() }
         }
     }
 }
@@ -156,6 +152,14 @@ struct MainToolbar: ToolbarContent {
     @Environment(ClusterModel.self) private var model
 
     var body: some ToolbarContent {
+        // No cluster actions until a kubeconfig is loaded.
+        if model.configError == nil && model.kubeconfig != nil {
+            items
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var items: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             NewResourceMenu(label: "New")
             Button {
