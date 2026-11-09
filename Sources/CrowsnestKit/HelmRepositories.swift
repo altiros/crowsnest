@@ -242,13 +242,65 @@ public enum HelmRepositories {
     }
 }
 
-/// Pulls Helm charts stored as OCI artifacts (e.g. `oci://registry-1.docker.io/bitnamicharts/nginx:18.0.0`),
-/// anonymously – like `helm pull` without `helm registry login`.
-enum OCIRegistry {
+/// Anonymous access to OCI/Docker registries: pulling Helm charts stored as OCI artifacts
+/// (e.g. `oci://registry-1.docker.io/bitnamicharts/nginx:18.0.0`) and listing image tags.
+public enum OCIRegistry {
     static let chartLayerType = "application/vnd.cncf.helm.chart.content.v1.tar+gzip"
 
-    struct Reference: Equatable {
-        var host: String, repository: String, tag: String
+    public struct Reference: Equatable, Sendable {
+        public var host: String, repository: String, tag: String
+        /// Set for digest-pinned references (`image@sha256:…`).
+        public var digest: String?
+
+        public init(host: String, repository: String, tag: String, digest: String? = nil) {
+            self.host = host
+            self.repository = repository
+            self.tag = tag
+            self.digest = digest
+        }
+    }
+
+    /// Parses a container image reference like kubectl does: `nginx:1.27` → registry-1.docker.io/library/nginx,
+    /// `ghcr.io/org/app:1.2`, `registry.local:5000/app@sha256:…`.
+    public static func parseImage(_ image: String) -> Reference? {
+        var rest = image.trimmingCharacters(in: .whitespaces)
+        guard !rest.isEmpty else { return nil }
+        var digest: String?
+        if let at = rest.firstIndex(of: "@") { digest = String(rest[rest.index(after: at)...]); rest = String(rest[..<at]) }
+        var tag = "latest"
+        if let colon = rest.lastIndex(of: ":"), !rest[colon...].contains("/") {
+            tag = String(rest[rest.index(after: colon)...])
+            rest = String(rest[..<colon])
+        }
+        var parts = rest.split(separator: "/").map(String.init)
+        guard !parts.isEmpty else { return nil }
+        var host = "registry-1.docker.io"
+        if parts.count > 1, parts[0].contains(".") || parts[0].contains(":") || parts[0] == "localhost" {
+            host = parts.removeFirst()
+            if host == "docker.io" || host == "index.docker.io" { host = "registry-1.docker.io" }
+        }
+        if host == "registry-1.docker.io" && parts.count == 1 { parts.insert("library", at: 0) }
+        return Reference(host: host, repository: parts.joined(separator: "/"), tag: tag, digest: digest)
+    }
+
+    /// All tags of a repository (follows pagination, at most `maxPages` pages).
+    public static func tags(of ref: Reference, session: URLSession = .shared, maxPages: Int = 20) async throws -> [String] {
+        var token: String?
+        var url: String? = "https://\(ref.host)/v2/\(ref.repository)/tags/list?n=1000"
+        var result: [String] = []
+        var pages = 0
+        while let next = url, pages < maxPages {
+            pages += 1
+            let (data, link) = try await getWithLink(next, accept: "application/json", token: &token, session: session)
+            result += (try JSONValue(jsonData: data))["tags"]?.array?.compactMap(\.string) ?? []
+            // Link: </v2/library/nginx/tags/list?last=1.2&n=1000>; rel="next"
+            url = link.flatMap { header in
+                guard let start = header.firstIndex(of: "<"), let end = header.firstIndex(of: ">"), header.contains("rel=\"next\"") else { return nil }
+                let path = String(header[header.index(after: start)..<end])
+                return path.hasPrefix("http") ? path : "https://\(ref.host)\(path)"
+            }
+        }
+        return result
     }
 
     static func parse(_ url: URL) -> Reference? {
@@ -274,8 +326,12 @@ enum OCIRegistry {
         return try await get("\(base)/blobs/\(digest)", accept: "*/*", token: &token, session: session)
     }
 
-    /// GET with the registry's anonymous bearer-token flow (401 → token from the `WWW-Authenticate` realm → retry).
     static func get(_ urlString: String, accept: String, token: inout String?, session: URLSession) async throws -> Data {
+        try await getWithLink(urlString, accept: accept, token: &token, session: session).data
+    }
+
+    /// GET with the registry's anonymous bearer-token flow (401 → token from the `WWW-Authenticate` realm → retry).
+    static func getWithLink(_ urlString: String, accept: String, token: inout String?, session: URLSession) async throws -> (data: Data, link: String?) {
         guard let url = URL(string: urlString) else { throw KubeError.invalidInput("Invalid URL \(urlString)") }
         for attempt in 0..<2 {
             var request = URLRequest(url: url)
@@ -283,15 +339,16 @@ enum OCIRegistry {
             request.setValue("Crowsnest", forHTTPHeaderField: "User-Agent")
             if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
             let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse else { return data }
+            guard let http = response as? HTTPURLResponse else { return (data, nil) }
             if http.statusCode == 401, attempt == 0, let challenge = http.value(forHTTPHeaderField: "WWW-Authenticate") {
                 token = try await fetchToken(challenge: challenge, session: session)
                 continue
             }
             guard (200..<300).contains(http.statusCode) else {
-                throw KubeError.invalidInput("Registry request failed: HTTP \(http.statusCode) for \(url.lastPathComponent)")
+                throw KubeError.invalidInput(http.statusCode == 401 || http.statusCode == 403
+                    ? "The registry requires a login" : "Registry request failed: HTTP \(http.statusCode) for \(url.lastPathComponent)")
             }
-            return data
+            return (data, http.value(forHTTPHeaderField: "Link"))
         }
         throw KubeError.invalidInput("The registry requires a login")
     }
@@ -342,7 +399,8 @@ public enum SemVer {
         }
     }
 
-    static func split(_ version: String) -> ([Int], String?) {
+    /// Numeric components and pre-release part ("v1.2.3-rc.1" → [1, 2, 3], "rc.1").
+    public static func split(_ version: String) -> ([Int], String?) {
         var v = version.trimmingCharacters(in: .whitespaces)
         if v.hasPrefix("v") { v.removeFirst() }
         if let plus = v.firstIndex(of: "+") { v = String(v[..<plus]) }  // build metadata doesn't order

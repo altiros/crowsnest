@@ -193,4 +193,16 @@ import Testing
         try? p.run(); p.waitUntilExit()
         return try? Data(contentsOf: dir.appending(path: "f.gz"))
     }
+
+    @Test func imageReferences() {
+        #expect(OCIRegistry.parseImage("nginx") == .init(host: "registry-1.docker.io", repository: "library/nginx", tag: "latest"))
+        #expect(OCIRegistry.parseImage("nginx:1.27-alpine") == .init(host: "registry-1.docker.io", repository: "library/nginx", tag: "1.27-alpine"))
+        #expect(OCIRegistry.parseImage("bitnami/redis:7.2") == .init(host: "registry-1.docker.io", repository: "bitnami/redis", tag: "7.2"))
+        #expect(OCIRegistry.parseImage("docker.io/library/redis:7") == .init(host: "registry-1.docker.io", repository: "library/redis", tag: "7"))
+        #expect(OCIRegistry.parseImage("ghcr.io/org/app:1.2.3") == .init(host: "ghcr.io", repository: "org/app", tag: "1.2.3"))
+        #expect(OCIRegistry.parseImage("registry.local:5000/team/app") == .init(host: "registry.local:5000", repository: "team/app", tag: "latest"))
+        let pinned = OCIRegistry.parseImage("quay.io/x/y:1.0@sha256:abc")
+        #expect(pinned?.digest == "sha256:abc")
+        #expect(pinned?.tag == "1.0")
+    }
 }
