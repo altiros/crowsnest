@@ -32,6 +32,7 @@ struct HelmReleasesView: View {
                                        description: Text(model.namespace.map { "in namespace \($0)" } ?? ""))
             }
         }
+        .compactWhileInspecting(model.selectedHelmReleaseKey != nil)
         .inspector(isPresented: Binding(
             get: { model.selectedHelmRelease != nil },
             set: { if !$0 { model.selectedHelmReleaseKey = nil } }

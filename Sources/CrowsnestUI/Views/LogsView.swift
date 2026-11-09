@@ -64,7 +64,11 @@ struct LogsView: View {
             }
             HStack {
                 Toggle("Follow", isOn: $follow)
+                #if os(macOS)
                 Toggle("Previous Container", isOn: $previous)
+                #else
+                Toggle("Previous", isOn: $previous)  // the previous container's logs
+                #endif
                 Toggle("Timestamps", isOn: $timestamps)
                 Spacer()
                 TextField("Filter", text: $filter)
@@ -75,6 +79,8 @@ struct LogsView: View {
             }
             #if os(macOS)
             .toggleStyle(.checkbox)
+            #else
+            .toggleStyle(.button)  // switches with long labels wrap in the inspector
             #endif
         }
         .controlSize(.small)

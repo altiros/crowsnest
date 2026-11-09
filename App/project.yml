@@ -26,7 +26,8 @@ targets:
     dependencies:
       - package: Crowsnest
         product: CrowsnestUI
-    scheme: {}
+    scheme:
+      testTargets: [Crowsnest iPad UITests]
     settings:
       base:
         PRODUCT_NAME: Crowsnest
@@ -41,6 +42,18 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+  Crowsnest iPad UITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Crowsnest iPad
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.altiros.Crowsnest.UITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Crowsnest iPad
+        TARGETED_DEVICE_FAMILY: "2"
   Crowsnest macOS:
     type: application
     platform: macOS

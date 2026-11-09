@@ -222,3 +222,16 @@ extension View {
         #endif
     }
 }
+
+extension View {
+    /// iPad: while the inspector is open, the table shows its first column only (like a compact list).
+    /// A full-width table next to the inspector would scroll sideways and hide the name column.
+    @ViewBuilder
+    func compactWhileInspecting(_ inspecting: Bool) -> some View {
+        #if os(macOS)
+        self
+        #else
+        if inspecting { environment(\.horizontalSizeClass, .compact) } else { self }
+        #endif
+    }
+}

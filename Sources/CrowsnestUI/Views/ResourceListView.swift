@@ -118,6 +118,7 @@ struct ResourceListView: View {
             ForEach(rows) { TableRow($0) }
         }
         .id(kind.id + (model.namespace == nil ? "*" : ""))
+        .compactWhileInspecting(model.selectedObject != nil)
         .contextMenu(forSelectionType: KubeObject.ID.self) { ids in
             if ids.count > 1 {
                 BulkActionsMenu(objects: model.objects.filter { ids.contains($0.id) }, kind: kind)
