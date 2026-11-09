@@ -35,6 +35,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Crowsnest
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: "NO"  # TLS and signature checks only (exempt)
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: Crowsnest connects to Kubernetes clusters on your local network.
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
