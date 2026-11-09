@@ -8,6 +8,13 @@ public struct ResourceTemplate: Identifiable, Sendable {
     public var symbol: String
     public var yaml: String
 
+    /// `yaml` may contain `{{namespace}}`, replaced by the namespace for new resources.
+    public init(name: String, symbol: String, yaml: String) {
+        self.name = name
+        self.symbol = symbol
+        self.yaml = yaml
+    }
+
     func render(namespace: String) -> String {
         yaml.replacingOccurrences(of: "{{namespace}}", with: namespace)
     }
