@@ -4,6 +4,7 @@ import SwiftUI
 struct SidebarView: View {
     @Environment(ClusterModel.self) private var model
     @State private var expandedCRDGroups: Set<String> = []
+    @State private var showImport = false
 
     var body: some View {
         @Bindable var model = model
@@ -59,6 +60,9 @@ struct SidebarView: View {
                     }
                 }
                 Divider()
+                if AppSandbox.isActive {
+                    Button("Import kubeconfig…") { showImport = true }
+                }
                 Button("Reload kubeconfig") { Task { await model.loadKubeconfig() } }
             } label: {
                 HStack {
@@ -76,6 +80,7 @@ struct SidebarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .connectClusterSheet(isPresented: $showImport)
     }
 
     private var statusLine: String {

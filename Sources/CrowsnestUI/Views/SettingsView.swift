@@ -36,20 +36,22 @@ public struct SettingsView: View {
             }
             ExtensionSettingsSections()
             #if os(macOS)
-            Section {
-                TextField("kubeconfig", text: $kubeconfigPath, prompt: Text(defaultPath))
-                #if os(macOS)
-                HStack {
-                    Button("Choose…") { choose() }
-                    if !kubeconfigPath.isEmpty { Button("Use Default") { kubeconfigPath = "" } }
+            if AppSandbox.isActive {
+                KubeconfigFilesSection()
+            } else {
+                Section {
+                    TextField("kubeconfig", text: $kubeconfigPath, prompt: Text(defaultPath))
+                    HStack {
+                        Button("Choose…") { choose() }
+                        if !kubeconfigPath.isEmpty { Button("Use Default") { kubeconfigPath = "" } }
+                    }
+                } header: {
+                    Text("kubeconfig")
+                } footer: {
+                    Text("Leave empty for $KUBECONFIG or ~/.kube/config. Separate multiple files with \":\". Changes apply after \"Reload kubeconfig\".")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                #endif
-            } header: {
-                Text("kubeconfig")
-            } footer: {
-                Text("Leave empty for $KUBECONFIG or ~/.kube/config. Separate multiple files with \":\". Changes apply after \"Reload kubeconfig\".")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             #else
             KubeconfigFilesSection()

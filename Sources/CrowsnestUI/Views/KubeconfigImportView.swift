@@ -2,9 +2,10 @@ import CrowsnestKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Buttons to import a kubeconfig from a file or the clipboard (used on iPadOS).
+/// Buttons to import a kubeconfig from a file or the clipboard (sandboxed: iPadOS, Mac App Store).
 struct KubeconfigImportButtons: View {
-    @Environment(ClusterModel.self) private var model
+    /// Missing in the macOS Settings window – the main window then reloads via `KubeconfigStore.didChange`.
+    @Environment(ClusterModel.self) private var model: ClusterModel?
     @State private var showImporter = false
     @State private var resultMessage: String?
     @State private var errorMessage: String?
@@ -50,9 +51,13 @@ struct KubeconfigImportButtons: View {
             resultMessage = "Imported: \(contexts.joined(separator: ", "))"
                 + (results.flatMap(\.warnings).isEmpty ? "" : "\n" + results.flatMap(\.warnings).joined(separator: "\n"))
             errorMessage = nil
-            Task {
-                await model.loadKubeconfig()
-                if let first = contexts.first { await model.selectContext(first) }
+            if let model {
+                Task {
+                    await model.loadKubeconfig()
+                    if let first = contexts.first { await model.selectContext(first) }
+                }
+            } else {
+                NotificationCenter.default.post(name: KubeconfigStore.didChange, object: nil)
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -61,9 +66,9 @@ struct KubeconfigImportButtons: View {
     }
 }
 
-/// Imported kubeconfig files with delete (iPadOS settings).
+/// Imported kubeconfig files with delete (settings when sandboxed).
 struct KubeconfigFilesSection: View {
-    @Environment(ClusterModel.self) private var model
+    @Environment(ClusterModel.self) private var model: ClusterModel?
     @State private var files: [URL] = KubeconfigStore.files()
 
     var body: some View {
@@ -72,25 +77,41 @@ struct KubeconfigFilesSection: View {
                 Text("No kubeconfig imported yet").foregroundStyle(.secondary)
             }
             ForEach(files, id: \.self) { url in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(url.lastPathComponent)
-                    let contexts = (try? KubeConfig.parse(String(contentsOf: url, encoding: .utf8)).contextNames) ?? []
-                    Text(contexts.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(url.lastPathComponent)
+                        let contexts = (try? KubeConfig.parse(String(contentsOf: url, encoding: .utf8)).contextNames) ?? []
+                        Text(contexts.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary)
+                    }
+                    #if os(macOS)
+                    Spacer()
+                    Button("Remove", systemImage: "trash", role: .destructive) { remove([url]) }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .help("Remove this kubeconfig")
+                    #endif
                 }
             }
-            .onDelete { offsets in
-                for index in offsets { try? KubeconfigStore.remove(files[index]) }
-                files = KubeconfigStore.files()
-                Task { await model.loadKubeconfig() }
-            }
+            .onDelete { offsets in remove(offsets.map { files[$0] }) }
             KubeconfigImportButtons()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 4)
         } header: {
             Text("kubeconfigs")
         } footer: {
-            Text("Export with \"kubectl config view --raw --flatten --minify --context <name>\". The files are stored protected in the app container. exec auth plugins (aws, gcloud, kubelogin) are not available on the iPad.")
+            Text("Export with \"kubectl config view --raw --flatten --minify --context <name>\". The files are stored protected in the app container. exec auth plugins (aws, gcloud, kubelogin) are not available in this version.")
         }
-        .onChange(of: model.kubeconfig?.contextNames) { files = KubeconfigStore.files() }
+        .onChange(of: model?.kubeconfig?.contextNames) { files = KubeconfigStore.files() }
+        .onReceive(NotificationCenter.default.publisher(for: KubeconfigStore.didChange)) { _ in files = KubeconfigStore.files() }
+    }
+
+    private func remove(_ urls: [URL]) {
+        for url in urls { try? KubeconfigStore.remove(url) }
+        files = KubeconfigStore.files()
+        if let model {
+            Task { await model.loadKubeconfig() }
+        } else {
+            NotificationCenter.default.post(name: KubeconfigStore.didChange, object: nil)
+        }
     }
 }

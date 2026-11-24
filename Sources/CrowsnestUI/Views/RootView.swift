@@ -46,6 +46,10 @@ public struct RootView: View {
         .environment(model)
         .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
         .task { await model.loadKubeconfig() }
+        // Imported or removed in the macOS Settings window (sandboxed).
+        .onReceive(NotificationCenter.default.publisher(for: KubeconfigStore.didChange)) { _ in
+            Task { await model.loadKubeconfig() }
+        }
         .confirmationDialog(
             model.pendingAction?.title ?? "",
             isPresented: Binding(get: { model.pendingAction != nil }, set: { if !$0 { model.pendingAction = nil } }),
@@ -127,17 +131,17 @@ public struct RootView: View {
             ContentUnavailableView {
                 Label("No kubeconfig", systemImage: "doc.badge.gearshape")
             } description: {
-                #if os(macOS)
-                Text(error)
-                #else
-                Text(error + "\nImport a kubeconfig with embedded certificates, e.g. created with \"kubectl config view --raw --flatten --minify\".")
-                #endif
+                if AppSandbox.isActive {
+                    Text(error + "\nImport a kubeconfig with embedded certificates, e.g. created with \"kubectl config view --raw --flatten --minify\".")
+                } else {
+                    Text(error)
+                }
             } actions: {
-                #if os(macOS)
-                Button("Reload") { Task { await model.loadKubeconfig() } }
-                #else
-                KubeconfigImportButtons()
-                #endif
+                if AppSandbox.isActive {
+                    KubeconfigImportButtons()
+                } else {
+                    Button("Reload") { Task { await model.loadKubeconfig() } }
+                }
                 Button("Try the Demo Cluster", systemImage: "play.circle") { Task { await model.openDemo() } }
                     .buttonStyle(.bordered)
                     .padding(.top, 4)
@@ -316,33 +320,50 @@ struct DemoBanner: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 8)
-            #if os(macOS)
-            Text("Switch to your clusters in the sidebar.").font(.caption).foregroundStyle(.secondary)
-            #else
-            Button("Connect Your Cluster…") { showImport = true }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            #endif
+            if AppSandbox.isActive {
+                Button("Connect Your Cluster…") { showImport = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            } else {
+                Text("Switch to your clusters in the sidebar.").font(.caption).foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(.tint.opacity(0.08))
-        #if !os(macOS)
-        .sheet(isPresented: $showImport) {
+        .connectClusterSheet(isPresented: $showImport)
+    }
+}
+
+/// Sandboxed (iPad, Mac App Store): import a kubeconfig into the app container.
+struct ConnectClusterSheet: ViewModifier {
+    @Binding var isPresented: Bool
+    @Environment(ClusterModel.self) private var model
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $isPresented) {
             NavigationStack {
                 VStack(spacing: 16) {
-                    Text("Import a kubeconfig with embedded certificates or tokens, e.g. created with \"kubectl config view --raw --flatten --minify\". Exec auth plugins (EKS, GKE, AKS logins) are not available on iPad.")
+                    Text("Import a kubeconfig with embedded certificates or tokens, e.g. created with \"kubectl config view --raw --flatten --minify\". Exec auth plugins (EKS, GKE, AKS logins) are not available in this version.")
                         .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     KubeconfigImportButtons()
                     Spacer()
                 }
                 .padding(24)
                 .navigationTitle("Connect Your Cluster")
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { showImport = false } } }
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { isPresented = false } } }
             }
+            #if os(macOS)
+            .frame(minWidth: 520, minHeight: 260)
+            #endif
             .environment(model)
-            .onChange(of: model.contextName) { if !model.isDemo { showImport = false } }
+            .onChange(of: model.contextName) { if !model.isDemo { isPresented = false } }
         }
-        #endif
+    }
+}
+
+extension View {
+    func connectClusterSheet(isPresented: Binding<Bool>) -> some View {
+        modifier(ConnectClusterSheet(isPresented: isPresented))
     }
 }

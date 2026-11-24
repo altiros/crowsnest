@@ -180,18 +180,23 @@ public final class ClusterModel {
     #endif
 
     public func loadKubeconfig() async {
-        #if os(macOS)
-        let urls = Self.kubeconfigFileURLs()
-        #else
-        // iPadOS: only kubeconfigs imported into the app container.
-        let urls = KubeconfigStore.files()
-        guard !urls.isEmpty else {
-            if await reopenDemo() { return }
-            kubeconfig = nil
-            configError = "No kubeconfig imported yet."
-            return
+        let urls: [URL]
+        if AppSandbox.isActive {
+            // Sandboxed (iPadOS, Mac App Store): only kubeconfigs imported into the app container.
+            urls = KubeconfigStore.files()
+            guard !urls.isEmpty else {
+                if await reopenDemo() { return }
+                kubeconfig = nil
+                configError = "No kubeconfig imported yet."
+                return
+            }
+        } else {
+            #if os(macOS)
+            urls = Self.kubeconfigFileURLs()
+            #else
+            urls = []
+            #endif
         }
-        #endif
         do {
             let config = try KubeConfig.load(from: urls).addingDemoContext()
             kubeconfig = config

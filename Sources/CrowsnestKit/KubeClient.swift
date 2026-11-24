@@ -100,6 +100,9 @@ public actor KubeClient {
             return "Basic \(Data("\(user):\(password)".utf8).base64EncodedString())"
         case .exec(let exec):
             #if os(macOS)
+            if AppSandbox.isActive {
+                throw KubeError.unsupported("exec auth plugins ('\(exec.command)') are not available in the App Store version")
+            }
             if forceRefresh || !(execCredential?.isValid() ?? false) {
                 execCredential = try await ExecCredentialRunner.run(exec, server: config.server)
             }

@@ -1,7 +1,7 @@
 import CrowsnestKit
 import Foundation
 
-/// Kubeconfig files imported into the app container. iPadOS has no `~/.kube`,
+/// Kubeconfig files imported into the app container. Sandboxed (iPadOS, Mac App Store) there is no `~/.kube`,
 /// so users import files (Files app, AirDrop, clipboard) instead.
 public enum KubeconfigStore {
     public struct ImportResult: Sendable {
@@ -41,12 +41,10 @@ public enum KubeconfigStore {
                     + "Export it with \"kubectl config view --raw --flatten\" (data embedded).")
         }
         var warnings: [String] = []
-        #if !os(macOS)
         let execUsers = config.users.filter { $0.user.exec != nil }.map(\.name)
-        if !execUsers.isEmpty {
-            warnings.append("exec plugins (\(execUsers.joined(separator: ", "))) are not supported on this device – these contexts cannot log in.")
+        if AppSandbox.isActive && !execUsers.isEmpty {
+            warnings.append("exec plugins (\(execUsers.joined(separator: ", "))) are not supported here – these contexts cannot log in.")
         }
-        #endif
 
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = uniqueURL(for: suggestedName)
@@ -70,6 +68,9 @@ public enum KubeconfigStore {
     public static func remove(_ url: URL) throws {
         try FileManager.default.removeItem(at: url)
     }
+
+    /// Posted after files were imported or removed where no `ClusterModel` is at hand (the macOS Settings window).
+    public static let didChange = Notification.Name("CrowsnestKubeconfigStoreDidChange")
 
     private static func uniqueURL(for name: String) -> URL {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_."))
